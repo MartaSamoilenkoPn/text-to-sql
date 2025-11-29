@@ -1,6 +1,6 @@
+import gradio as gr
 import sqlite3
 import pandas as pd
-import re
 from langchain_community.utilities import SQLDatabase
 from langchain_ollama import ChatOllama
 from langchain_classic.chains import create_sql_query_chain
@@ -8,64 +8,90 @@ from langchain_classic.chains import create_sql_query_chain
 import langchain
 langchain.debug = True
 
+# --- Configuration ---
 DB_URI = "sqlite:///sample.db"
-LLM_MODEL = "llama3:8b"
+LLM_MODEL = "qwen3:4b-instruct"
 
+# --- Initialization ---
 def create_chat_components(db_uri, model_name):
     print("Setting up components...")
     db = SQLDatabase.from_uri(db_uri)
     llm = ChatOllama(model=model_name, temperature=0)
     query_chain = create_sql_query_chain(llm, db)
-    print("✓ Setup complete. Ready to chat.\n")
-    return query_chain, db_uri
+    return query_chain
 
+chain = create_chat_components(DB_URI, LLM_MODEL)
 
-def main_chat_loop(query_chain, db_uri):
-    db_path = db_uri.replace("sqlite:///", "")
+# --- Core Logic ---
+def process_query(user_question):
+    """
+    Takes a text question, generates SQL, runs it, and returns the SQL + Table.
+    """
+    if not user_question:
+        return "Please enter a question.", None
+
+    # Connect to DB just for this query
+    db_path = DB_URI.replace("sqlite:///", "")
     conn = sqlite3.connect(db_path)
-
-    print("--- Text-to-SQL Chat ---")
-    print("Type 'exit' to quit.")
-
-    while True:
-        try:
-            user_question = input("\nAsk your database a question: ")
-
-            if user_question.lower().strip() == 'exit':
-                print("Goodbye!")
+    
+    try:
+        # 1. Invoke LLM with retry logic
+        llm_response = ""
+        for _ in range(5):
+            llm_response = chain.invoke({"question": user_question})
+            if llm_response:
                 break
+        
+        # 2. Extract SQL
+        # We try to split by 'SQLQuery:', but we also clean up markdown formatting just in case
+        if "SQLQuery:" in llm_response:
+            generated_sql = llm_response.split("SQLQuery:")[1]
+        else:
+            # Fallback: assume the whole response might be SQL if the prompt failed strictly
+            generated_sql = llm_response
 
-            k = 0
-            while k < 5:
-                llm_response = query_chain.invoke({"question": user_question})
-                if llm_response:
-                    break
-                k += 1
+        # Cleanup: Remove Markdown backticks if the LLM adds them
+        generated_sql = generated_sql.replace("```sql", "").replace("```", "").strip()
+        
+        # Remove any trailing semicolon if pandas doesn't like it (optional, usually pandas handles it)
+        # generated_sql = generated_sql.rstrip(';') 
 
-            print(f"LLM Response:\n{llm_response}")
+        # 3. Execute SQL
+        df = pd.read_sql_query(generated_sql, conn)
+        
+        conn.close()
+        
+        # Return the SQL string and the Dataframe
+        return generated_sql, df
 
-            sql_match = llm_response.split("SQLQuery:")[1]
+    except pd.errors.DatabaseError as e:
+        conn.close()
+        return f"SQL Error:\n{e}\n\nGenerated SQL was:\n{generated_sql}", None
+    except Exception as e:
+        conn.close()
+        return f"Error processing request: {str(e)}", None
 
-            if not sql_match:
-                print("\n[Error] Could not find a valid SQL query in the LLM's response.")
-                continue
+# --- Gradio UI ---
+with gr.Blocks(title="Text-to-SQL Chat") as demo:
+    gr.Markdown("# 🍌 Text-to-SQL Assistant")
+    gr.Markdown(f"Querying database: `{DB_URI}` using `{LLM_MODEL}`")
+    
+    with gr.Row():
+        with gr.Column(scale=1):
+            inp = gr.Textbox(placeholder="How many users do we have?", label="Ask a question")
+            btn = gr.Button("Run Query", variant="primary")
+        
+        with gr.Column(scale=1):
+            sql_output = gr.Code(language="sql", label="Generated SQL")
+    
+    # Dataframe to display results
+    result_output = gr.Dataframe(label="Query Results", interactive=False)
 
-            generated_sql = sql_match
-            print(f"Extracted SQL:\n{generated_sql}")
-
-            df = pd.read_sql_query(generated_sql, conn)
-
-            print("\nQuery Result:")
-            print(df)
-
-        except pd.errors.DatabaseError as e:
-            print(f"\n[Error] The generated SQL was invalid: {e}")
-        except Exception as e:
-            print(f"\n[Error] An unexpected error occurred: {e}")
-
-    conn.close()
-
+    # Event listener
+    btn.click(fn=process_query, inputs=inp, outputs=[sql_output, result_output])
+    
+    # Allow pressing "Enter" to submit
+    inp.submit(fn=process_query, inputs=inp, outputs=[sql_output, result_output])
 
 if __name__ == "__main__":
-    chain, uri = create_chat_components(DB_URI, LLM_MODEL)
-    main_chat_loop(chain, uri)
+    demo.launch()

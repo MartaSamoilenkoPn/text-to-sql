@@ -1,0 +1,6 @@
+langchain
+langchain-ollama
+langchain-community
+langchain-classic
+pandas
+gradio
