@@ -13,7 +13,7 @@ except ImportError:
     exit(1)
 
 DB_PATH = "sample.db"
-TEMPLATE_PATH = "templates/select_info.yaml"
+TEMPLATE_PATH = "select_info.yaml"
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 
 
