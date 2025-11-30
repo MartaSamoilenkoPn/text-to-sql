@@ -1,0 +1,23 @@
+name: select_info
+templates:
+  # Simple filtering by City
+  - question: "Show me all users living in {{city}}"
+    sql: "SELECT * FROM users WHERE city = '{{city}}'"
+
+  - question: "How many users are from {{city}}?"
+    sql: "SELECT count(*) FROM users WHERE city = '{{city}}'"
+
+  # Filtering by Product Category
+  - question: "List all products in the {{category}} category"
+    sql: "SELECT name, price FROM products WHERE category = '{{category}}'"
+
+  - question: "What is the average price of {{category}} products?"
+    sql: "SELECT AVG(price) FROM products WHERE category = '{{category}}'"
+
+  # Specific Product lookup
+  - question: "How many {{product_name}}s are currently in stock?"
+    sql: "SELECT stock FROM products WHERE name = '{{product_name}}'"
+
+  # Join logic (Orders -> Users)
+  - question: "Who bought a {{product_name}}?"
+    sql: "SELECT T1.name FROM users AS T1 JOIN orders AS T2 ON T1.id = T2.user_id WHERE T2.product_name = '{{product_name}}'"
