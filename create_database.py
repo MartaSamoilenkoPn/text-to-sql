@@ -6,15 +6,12 @@ from faker import Faker
 fake = Faker()
 
 def create_sample_database(db_path: str = "sample.db"):
-    # If we remove the file here, the DROP TABLE statements below are
-    # technically redundant, but it is good practice to keep the SQL valid.
     if os.path.exists(db_path):
         os.remove(db_path)
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # FIX 1: Changed "EXIST" to "EXISTS"
     cursor.execute("""DROP TABLE IF EXISTS users;""")
     cursor.execute("""
                    CREATE TABLE users
@@ -28,7 +25,6 @@ def create_sample_database(db_path: str = "sample.db"):
                    )
                    """)
 
-    # FIX 2: Changed "EXIST" to "EXISTS"
     cursor.execute("""DROP TABLE IF EXISTS products;""")
     cursor.execute("""
                    CREATE TABLE products
@@ -41,8 +37,6 @@ def create_sample_database(db_path: str = "sample.db"):
                    )
                    """)
 
-    # FIX 3: Changed "EXIST" to "EXISTS"
-    # FIX 4: Removed the duplicate "CREATE TABLE IF EXISTS orders;" line
     cursor.execute("""DROP TABLE IF EXISTS orders;""")
     cursor.execute("""
                    CREATE TABLE orders
@@ -57,9 +51,6 @@ def create_sample_database(db_path: str = "sample.db"):
                    )
                    """)
 
-    # --- Data Generation ---
-
-    # 1. Generate Products
     products_data = [
         ("Laptop", "Electronics", 999.99, 50),
         ("Mouse", "Electronics", 29.99, 200),
@@ -77,7 +68,6 @@ def create_sample_database(db_path: str = "sample.db"):
         products_data
     )
 
-    # 2. Generate 50 Synthetic Users
     print("Generating users...")
     users_data = []
     cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego",
@@ -96,9 +86,7 @@ def create_sample_database(db_path: str = "sample.db"):
         users_data
     )
 
-    # 3. Generate 200 Synthetic Orders
     print("Generating orders...")
-    # Get user IDs to link orders correctly
     user_ids = [row[0] for row in cursor.execute("SELECT id FROM users").fetchall()]
 
     orders_data = []
