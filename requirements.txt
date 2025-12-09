@@ -2,7 +2,11 @@ langchain
 langchain-ollama
 langchain-community
 langchain-classic
+sentence_transformers
+scikit-learn
+faker
 pandas
 gradio
 datasets
 tqdm
+gdown
