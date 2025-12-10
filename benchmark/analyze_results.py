@@ -79,5 +79,6 @@ def analyze_sql_results(file_path):
 # You can replace this block by just pointing to your actual file
 if __name__ == "__main__":
     # Assuming the data provided in the prompt is saved in 'results.jsonl'
-    file_path = './benchmark/benchmark_results_llama3-8b.jsonl' 
+    file_path = './benchmark/benchmark_results_qwen2.5-coder:7b_Qwen_Qwen3-Embedding-0.6B.jsonl' 
+
     analyze_sql_results(file_path)
