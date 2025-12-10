@@ -1,20 +1,20 @@
-import sqlite3
-import pandas as pd
-import json
-import numpy as np
 import re
+import json
+import sqlite3
+
+import numpy as np
+import pandas as pd
 
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from langchain_community.utilities import SQLDatabase
+
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import PromptTemplate
+from langchain_community.utilities import SQLDatabase
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-# ---------------------------
 # CONFIG
-# ---------------------------
 DB_URI = "sqlite:///sample.db"
 LLM_MODEL = "qwen3:4b-instruct"
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
@@ -51,6 +51,7 @@ def get_relevant_template(user_question, embed_model, conn):
         return q_tmpl, sql_tmpl, best_score
 
     return None, None, best_score
+
 
 def create_chat_chain(db_uri, model_name):
     db = SQLDatabase.from_uri(db_uri)
@@ -118,15 +119,14 @@ def process_query(user_question, chain, embed_model, db_path_override=None, temp
     target_db = db_path_override if db_path_override else DB_URI
     real_db_path = target_db.replace("sqlite:///", "")
     
-    # Connection for EXECUTION (The target data)
+    # Connection for TARGET DB (where user SQL will be executed)
     target_conn = sqlite3.connect(real_db_path)
     
     # Connection for TEMPLATES (The RAG knowledge base)
-    # If no separate template DB is provided, assume templates are in the target DB
+    # If no separate template DB is provided, templates are in the target DB
     rag_conn = template_conn if template_conn else target_conn
 
-    # ---- Template Matching (Use rag_conn) ----
-    # We pass rag_conn, NOT target_conn here
+    # Template Matching
     q_tmpl, sql_tmpl, score = get_relevant_template(user_question, embed_model, rag_conn)
     score_text = f"{score:.4f}"
 
@@ -139,7 +139,7 @@ def process_query(user_question, chain, embed_model, db_path_override=None, temp
         q_tmpl_show = q_tmpl
         sql_tmpl_show = sql_tmpl
 
-    # ---- LLM ----
+    # LLM
     response = chain.invoke({
         "question": user_question,
         "template_hint": template_for_llm
@@ -147,7 +147,7 @@ def process_query(user_question, chain, embed_model, db_path_override=None, temp
 
     generated_sql = extract_sql_from_response(response)
 
-    # ---- SQL Execution (Use target_conn) ----
+    # SQL Execution
     try:
         df = pd.read_sql_query(generated_sql, target_conn)
         target_conn.close()
