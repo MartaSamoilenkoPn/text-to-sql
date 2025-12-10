@@ -1,4 +1,5 @@
 import json
+import argparse
 import pandas as pd
 
 def analyze_sql_results(file_path):
@@ -42,6 +43,10 @@ def analyze_sql_results(file_path):
 
 
 if __name__ == "__main__":
-    file_path = './benchmark/benchmark_results_qwen2.5-coder:7b_Qwen_Qwen3-Embedding-0.6B.jsonl' 
+    parser = argparse.ArgumentParser(description="Analyze SQL Benchmark Results")
+    parser.add_argument("--file_path", type=str, required=False, help="Path to the benchmark results JSONL file.")
+    args = parser.parse_args()
+    
+    file_path = args.file_path if args.file_path else './benchmark/benchmark_results_qwen3:4b-instruct.jsonl' 
 
     analyze_sql_results(file_path)

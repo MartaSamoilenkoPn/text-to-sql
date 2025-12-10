@@ -16,7 +16,7 @@ TEMPLATE_DB_PATH = "spider_templates.db"
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Benchmark Text-to-SQL App on Spider Dataset")
-    parser.add_argument("--run_name", type=str, default="default", help="Name of the run (used for output filename)")
+    parser.add_argument("--model", type=str, default=LLM_MODEL, help="Name of the LLM model to use.")
     return parser.parse_args()
 
 
@@ -148,7 +148,8 @@ def run_benchmark(validation_data, embed_model, output_file):
 if __name__ == "__main__":
     args = parse_arguments()
     
-    output_filename = f"./benchmark/benchmark_results_{args.run_name}.jsonl"
+    output_filename = f"./benchmark/benchmark_results_{args.model}.jsonl"
+    LLM_MODEL = args.model
 
     print("Loading Embedding Model...")
     embed_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
